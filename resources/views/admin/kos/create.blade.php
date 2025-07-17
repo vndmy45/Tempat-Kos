@@ -2,7 +2,7 @@
 <div class="modal fade" id="modalTambahKos" tabindex="-1" aria-labelledby="modalTambahKosLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="{{ route('kos.store') }}" method="POST">
+            <form action="{{ route('kos.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalTambahKosLabel">Tambah Data Kos</h5>
@@ -23,6 +23,24 @@
                     <div class="mb-3">
                         <label for="harga" class="form-label">Harga</label>
                         <input type="number" class="form-control" name="harga" value="{{ old('harga') }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="fasilitas" class="form-label">Fasilitas</label>
+                        <div class="row">
+                            @foreach ($dataFasilitas as $fasilitas)
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="fasilitas[]" value="{{ $fasilitas->id }}"
+                                            id="fasilitas_{{ $fasilitas->id }}"
+                                            {{ isset($kos) && $kos->fasilitas->contains($fasilitas->id) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="fasilitas_{{ $fasilitas->id }}">
+                                            {{ $fasilitas->nama_fasilitas }}
+                                        </label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -54,6 +72,11 @@
                     <div class="mb-3">
                         <label for="kontak_pemilik" class="form-label">Kontak Pemilik</label>
                         <input type="text" class="form-control" name="kontak_pemilik" value="{{ old('kontak_pemilik') }}" required>
+                    </div>
+                    <!-- Upload Gambar -->
+                    <div class="mb-3">
+                        <label for="gambar" class="form-label">Gambar Kos</label>
+                        <input type="file" name="gambar[]" class="form-control" multiple required>
                     </div>
                 </div>
                 <div class="modal-footer">

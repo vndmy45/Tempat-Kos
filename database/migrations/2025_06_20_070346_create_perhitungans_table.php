@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('perhitungan', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_user')->constrained('data_user')->onDelete('cascade');
+            $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
             $table->float('cosine_similarity');
             $table->text('hasil_rekomendasi')->nullable();
             $table->timestamps();

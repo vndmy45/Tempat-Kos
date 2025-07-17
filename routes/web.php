@@ -1,8 +1,13 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KosController;
 use App\Http\Controllers\PencarianController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PengujianController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SurveyKepuasanController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,7 +27,7 @@ use Illuminate\Support\Facades\Route;
 
 
 //admin
-Route::get('/admin/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
+
 
 // Daftar kos
 Route::get('/admin/kos', [KosController::class, 'index'])->name('kos.index');
@@ -63,5 +68,58 @@ Route::delete('/admin/fasilitas/{fasilitas}', [FasilitasController::class, 'dest
 //user
 Route::get('/',[HomeController::class, 'index']);
 
-Route::get('/pencarian', [PencarianController::class, 'index'])->name('pencarian.index');
-Route::get('/pencarian/filter', [PencarianController::class, 'filter'])->name('pencarian.filter');
+
+Route::post('/komentar', [KosController::class, 'simpanKomentar'])->name('komentar.store');
+
+
+Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
+
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+    'role:admin'
+])->group(function () {
+    Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+});
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+    'role:user'
+])->group(function () {
+    Route::get('/user/dashboard', [HomeController::class, 'index'])->name('user.index');
+});
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+    'role:user'
+])->group(function () {
+    Route::get('/pencarian', [PencarianController::class, 'index'])->name('pencarian.index');
+});
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified'
+])->group( function ()  {
+    Route::get('/home', [RoleController::class, 'redirectUser'])->name('dashboard');
+});
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+    'role:user'
+])->group(function () {
+    Route::get('/detailkos/{id}', [KosController::class, 'showUserKos'])->name('user.kos.show');
+});
+
+
+Route::post('/survey', [SurveyKepuasanController::class, 'store'])->name('survey.store');
+
+Route::get('/pengujian/mae', [PengujianController::class, 'mae'])->name('pengujian.mae');

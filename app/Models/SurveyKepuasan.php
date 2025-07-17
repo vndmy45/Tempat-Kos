@@ -17,7 +17,7 @@ class SurveyKepuasan extends Model
 
     public function user()
     {
-        return $this->belongsTo(DataUser::class, 'id_user');
+        return $this->belongsTo(User::class, 'id_user');
     }
 
     public function kos()

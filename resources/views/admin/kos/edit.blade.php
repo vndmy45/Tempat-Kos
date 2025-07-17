@@ -3,7 +3,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             @if(isset($kos))
-            <form action="{{ route('kos.update', $kos->id) }}" method="POST">
+            <form action="{{ route('kos.update', $kos->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf 
                 @method('PUT')
                 <div class="modal-header">
@@ -25,6 +25,24 @@
                     <div class="mb-3">
                         <label for="harga" class="form-label">Harga</label>
                         <input type="number" class="form-control @error('harga') is-invalid @enderror" name="harga" value="{{ old('harga', $kos->harga) }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="fasilitas" class="form-label">Fasilitas</label>
+                        <div class="row">
+                            @foreach ($dataFasilitas as $fasilitas)
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="fasilitas[]" value="{{ $fasilitas->id }}"
+                                            id="fasilitas_{{ $fasilitas->id }}"
+                                            {{ isset($kos) && $kos->fasilitas->contains($fasilitas->id) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="fasilitas_{{ $fasilitas->id }}">
+                                            {{ $fasilitas->nama_fasilitas }}
+                                        </label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
 
                     <div class="mb-3">

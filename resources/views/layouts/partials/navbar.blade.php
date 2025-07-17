@@ -18,8 +18,22 @@
               </li>
             </ul>
         <div class="ms-auto">
-            <a href="#" class="button-primary">Daftar</a>
-            <a href="#" class="button-secundary">Masuk</a>
+
+          @if (Auth::check())
+            <a href="" class="button-primary">{{ Auth::user()->name }}</a>
+            <a href="{{ route('logout') }}" class="button-secundary" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Keluar</a>
+            <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+                @csrf
+            </form>
+            
+                
+            @else
+                
+             <a href="{{ route('register') }}" class="button-primary">Daftar</a>
+            <a href="{{ route('login') }}" class="button-secundary">Masuk</a>
+
+          @endif
+           
         </div>
 
           </div>

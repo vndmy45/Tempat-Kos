@@ -36,9 +36,11 @@
                 <th>Nama Kos</th>
                 <th>Alamat</th>
                 <th>Harga</th>
+                <th>Fasilitas</th>
                 <th>Jenis</th>
                 <th>Rating</th>
                 <th>Kontak</th>
+                <th>Foto</th>
                 <th>Aksi</th>
             </tr>
         </thead>
@@ -48,9 +50,17 @@
                     <td>{{ $kos->nama_kos }}</td>
                     <td>{{ $kos->alamat }}</td>
                     <td>{{ $kos->harga }}</td>
+                    <td>{{ $kos->fasilitas->pluck('nama_fasilitas')->join(', ') ?: '-' }}</td>
                     <td>{{ $kos->jenis_kost }}</td>
                     <td>{{ $kos->nilai_rating ?? '-' }}</td>
                     <td>{{ $kos->kontak_pemilik }}</td>
+                    <td>
+                        @if ($kos->gambarKos->first())
+                            <img src="{{ $kos->gambarKos->first()->link_foto }}" alt="Foto Kos" width="80" height="60">
+                        @else
+                            <span class="text-muted">Belum ada foto</span>
+                        @endif
+                    </td>
                     <td>
                         <a href="{{ route('kos.show', $kos->id) }}" class="btn btn-info btn-sm">Detail</a>
                         <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditKos{{ $kos->id }}">Edit</button>

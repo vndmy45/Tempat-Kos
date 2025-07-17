@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('komentar', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_user')->constrained('data_user')->onDelete('cascade');
+            $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
             $table->foreignId('id_kos')->constrained('kos')->onDelete('cascade');
             $table->float('rating');
             $table->text('isi_komentar');

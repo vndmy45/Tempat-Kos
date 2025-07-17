@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('survey_kepuasan', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_user')->constrained('data_user')->onDelete('cascade');
+            $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
             $table->foreignId('id_kos')->constrained('kos')->onDelete('cascade');
             $table->integer('skor');
             $table->text('komentar')->nullable();

@@ -1,6 +1,16 @@
 @extends('layouts.sidebar')
 @section('content')
 
+<div class="d-flex justify-content-between align-items-center mb-4 px-2">
+    <h5 class="mb-0">Selamat datang, {{ Auth::user()->name }}</h5>
+    <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        <button class="btn btn-primary btn-sm d-flex align-items-center">
+            <i class="bi bi-box-arrow-right me-1"></i> Logout
+        </button>
+    </form>
+</div>
+
 <h1 class="judul">Beranda</h1>
 <div class="welcome-card">
     <h3>Selamat Datang di Sistem Rekomendasi Tempat Kos</h3>

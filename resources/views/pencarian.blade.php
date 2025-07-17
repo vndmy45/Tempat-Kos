@@ -9,7 +9,7 @@
             </div>
             
             <!-- Filter Section -->
-            <form action="{{ route('pencarian.filter') }}" method="GET" id="filterForm">
+            <form action="{{ route('pencarian.index') }}" method="GET" id="filterForm">
                 <div class="filter-section bg-white p-3 rounded">
                     <div class="row g-3">
                         <div class="col-md-3">
@@ -21,32 +21,25 @@
                                 <option value="> Rp. 1.000.000" {{ request('harga') == '> Rp. 1.000.000' ? 'selected' : '' }}>> Rp. 1.000.000</option>
                             </select>
                         </div>
-                       <div class="col-md-3">
+                        <div class="col-md-3">
                             <label class="form-label">Fasilitas</label>
-                            <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
-                                @foreach($fasilitas as $f)
-                                    <div class="form-check">
-                                        <input 
-                                            class="form-check-input" 
-                                            type="checkbox" 
-                                            name="fasilitas[]" 
-                                            value="{{ $f->id }}" 
-                                            id="fasilitas_{{ $f->id }}"
-                                            {{ is_array(request('fasilitas')) && in_array($f->id, request('fasilitas')) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="fasilitas_{{ $f->id }}">
-                                            {{ $f->nama_fasilitas }}
-                                        </label>
-                                    </div>
+                            <select class="selectpicker w-100" name="fasilitas[]" multiple data-style="btn-outline-secondary">
+                                @foreach($fasilitas as $item)
+                                    <option value="{{ $item->id }}" {{ collect(request('fasilitas'))->contains($item->id) ? 'selected' : '' }}>
+                                        {{ $item->nama_fasilitas }}
+                                    </option>
                                 @endforeach
-                            </div>
+                            </select>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Rating</label>
                             <select class="form-select" name="rating">
                                 <option value="">Pilih Rating</option>
-                                <option value="5" {{ request('rating') == '5' ? 'selected' : '' }}>⭐⭐⭐⭐⭐</option>
-                                <option value="4" {{ request('rating') == '4' ? 'selected' : '' }}>⭐⭐⭐⭐</option>
-                                <option value="3" {{ request('rating') == '3' ? 'selected' : '' }}>⭐⭐⭐</option>
+                                @foreach($ratings as $rating)
+                                    <option value="{{ $rating }}" {{ request('rating') == $rating ? 'selected' : '' }}>
+                                        {{ str_repeat('⭐', $rating) }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -58,8 +51,11 @@
                                 <option value="> 3 km" {{ request('jarak') == '> 3 km' ? 'selected' : '' }}>> 3 km</option>
                             </select>
                         </div>
-                        <div class="col-md-1 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">Cari</button>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12 d-flex justify-content-center gap-3">
+                            <button type="submit" name="metode" value="filter" class="btn btn-primary">Cari</button>
+                            <button type="submit" name="metode" value="rekomendasi" class="btn btn-primary">Rekomendasi</button>
                         </div>
                     </div>
                 </div>
@@ -68,44 +64,51 @@
     </div>
 
     <!-- Hasil Pencarian -->
-    <div class="search-results py-5">
-        <div class="container">
-            <h3 class="mb-4">Rekomendasi Kost Terpopuler Untukmu</h3>
-            
-            <div class="row g-4">
-                @forelse($kos_list as $kos)
-                <div class="col-md-3">
-                    <div class="card kost-card">
-                        <img src="{{ asset('storage/' . $kos->gambar) }}" class="card-img-top" alt="{{ $kos->nama }}">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h5 class="card-title mb-0">{{ $kos->nama }}</h5>
-                                <div class="rating">
-                                    @for($i = 0; $i < $kos->rating; $i++)
-                                        ⭐
-                                    @endfor
-                                </div>
+<div class="search-results py-5">
+    <div class="container">
+        @if(request('metode') === 'rekomendasi')
+            <h3 class="mb-4">Hasil Rekomendasi Kos Untukmu</h3>
+        @else
+            <h3 class="mb-4">Hasil Pencarian Kos Sesuai Filter</h3>
+        @endif
+        
+        <div class="row g-4">
+            @forelse($kos_list as $kos)
+            <div class="col-md-3">
+                <div class="card kost-card">
+                    <img src="{{ $kos->gambarKos->first() ? asset($kos->gambarKos->first()->link_foto) : asset('default.jpg') }}" class="card-img-top" alt="{{ $kos->nama_kos }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="card-title mb-0">{{ $kos->nama_kos }}</h5>
+                            <div class="rating">
+                                @for($i = 0; $i < floor($kos->nilai_rating); $i++)
+                                    ⭐
+                                @endfor
+                                <small class="text-muted">({{ number_format($kos->nilai_rating, 1) }})</small>
                             </div>
-                            <p class="card-text mb-2">Rp. {{ number_format($kos->harga, 0, ',', '.') }}</p>
-                            <a href="{{ route('kos.show', $kos->id) }}" class="btn btn-primary w-100">Detail</a>
                         </div>
+                        <p class="card-text mb-2">Rp. {{ number_format($kos->harga, 0, ',', '.') }}</p>
+                        <small class="text-muted">Jarak: {{ number_format($kos->jarak, 2) }} km</small>
+                        <small>Similarity: {{ number_format($kos->similarity, 4) }}</small>
+                        <a href="{{ route('user.kos.show', ['id' => $kos->id, 'from' => request()->fullUrl()]) }}" class="btn btn-primary w-100">Detail</a>
                     </div>
                 </div>
-                @empty
-                <div class="col-12">
-                    <div class="alert alert-info">
-                        Tidak ada kos yang ditemukan
-                    </div>
-                </div>
-                @endforelse
             </div>
+            @empty
+            <div class="col-12">
+                <div class="alert alert-info">
+                    Tidak ada kos yang ditemukan
+                </div>
+            </div>
+            @endforelse
+        </div>
 
-            <div class="d-flex justify-content-center mt-4">
-                {{ $kos_list->links() }}
-            </div>
+        <div class="d-flex justify-content-center mt-4">
+            {{ $kos_list->links() }}
         </div>
     </div>
 </div>
+
 
 <script>
     $(document).ready(function () {

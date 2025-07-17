@@ -40,10 +40,6 @@
 
         <!-- Main Content -->
         <div class="content w-100">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4>Selamat datang, Alvina Damayanti</h4>
-            </div>
-
             @yield('content')
         </div>
     </div>

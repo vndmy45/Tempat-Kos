@@ -11,17 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('data_user', function (Blueprint $table) {
+        Schema::create('hasil_rekomendasi', function (Blueprint $table) {
             $table->id();
-            $table->string('nama_user', 255);
-            $table->text('alamat');
-            $table->string('email', 255)->unique();
-            $table->string('username', 100)->unique();
-            $table->string('password');
-            $table->enum('role', ['Admin', 'Mahasiswa']);
+            $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
+            $table->foreignId('id_kos')->constrained('kos')->onDelete('cascade');
+            $table->float('nilai_similarity');
             $table->timestamps();
         });
-
     }
 
     /**
@@ -29,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('data_users');
+        Schema::dropIfExists('hasil_rekomendasi');
     }
 };
