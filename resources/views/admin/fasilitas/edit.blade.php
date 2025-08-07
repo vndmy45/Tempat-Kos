@@ -10,6 +10,15 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-2">
+                        <label>Kategori Fasilitas</label>
+                        <select name="id_kategori" class="form-control" required>
+                            <option value="">-- Pilih Kategori --</option>
+                            @foreach ($kategoriFasilitas as $kategori)
+                                <option value="{{ $kategori->id }}">{{ $kategori->nama_kategori }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-2">
                         <label>Nama</label>
                         <input type="text" name="nama_fasilitas" class="form-control" value="{{ $fasilitas->nama_fasilitas }}" required>
                     </div>

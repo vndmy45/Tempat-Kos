@@ -12,12 +12,16 @@ class Fasilitas extends Model
     protected $table = 'fasilitas';
 
     protected $fillable = [
-        'nama_fasilitas', 'index',
+        'nama_fasilitas', 'index','id_kategori',
     ];
 
     public function kos()
     {
         return $this->belongsToMany(Kos::class, 'kos_fasilitas', 'id_fasilitas', 'id_kos')->withPivot('nilai_fasilitas');
+    }
+    public function kategori()
+    {
+        return $this->belongsTo(KategoriFasilitas::class, 'id_kategori');
     }
 }
 

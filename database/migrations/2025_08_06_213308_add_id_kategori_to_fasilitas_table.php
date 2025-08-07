@@ -11,12 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('kriteria', function (Blueprint $table) {
-            $table->id();
-            $table->string('nama_kriteria', 255);
-            $table->enum('type_kriteria', ['Benefit', 'Cost']);
-            $table->timestamps();
-        });
+        Schema::table('fasilitas', function (Blueprint $table) {
+        $table->foreignId('id_kategori')->nullable()->constrained('kategori_fasilitas')->onDelete('set null');
+    });
 
     }
 
@@ -25,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('kriterias');
+        Schema::table('fasilitas', function (Blueprint $table) {
+            //
+        });
     }
 };

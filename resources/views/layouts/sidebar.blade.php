@@ -29,13 +29,14 @@
             class="d-flex align-items-center {{ request()->routeIs('kos.*') ? 'active' : '' }}">
             <i class="bi bi-building me-2"></i> Data Kos
         </a>
-        <a href="{{ route('fasilitas.index') }}" class="d-flex align-items-center">
+        <a href="{{ route('fasilitas.index') }}" 
+        class="d-flex align-items-center {{ request()->routeIs('fasilitas.*') ? 'active' : '' }}">
             <i class="bi bi-sliders2-vertical me-2"></i> Data Fasilitas
         </a>
-        <a href="#" class="d-flex align-items-center">
-            <i class="bi bi-stars me-2"></i> Sistem Rekomendasi
+        <a href="{{ route('kategori-fasilitas.index') }}" 
+        class="d-flex align-items-center {{ request()->routeIs('kategori-fasilitas.*') ? 'active' : '' }}">
+            <i class="bi bi-tags me-2"></i> Kategori Fasilitas
         </a>
-
         </div>
 
         <!-- Main Content -->

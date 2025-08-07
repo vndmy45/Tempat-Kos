@@ -33,7 +33,7 @@ class Kos extends Model
 
     public function fasilitas()
     {
-        return $this->belongsToMany(Fasilitas::class, 'kos_fasilitas', 'id_kos', 'id_fasilitas')->withPivot('nilai_fasilitas');
+        return $this->belongsToMany(Fasilitas::class, 'kos_fasilitas', 'id_kos', 'id_fasilitas');
     }
 }
 

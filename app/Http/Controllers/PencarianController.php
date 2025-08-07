@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Fasilitas;
 use App\Models\HasilRekomendasi;
+use App\Models\KategoriFasilitas;
 use App\Models\Kos;
 use App\Models\NormalisasiKos;
 use App\Models\SurveyKepuasan;
@@ -15,29 +16,33 @@ class PencarianController extends Controller
 {
     public function index(Request $request)
     {
-        $fasilitas = Fasilitas::all();
+        // Mengambil semua data fasilitas dari database
+        $kategoriFasilitas = KategoriFasilitas::with('fasilitas')->get();
 
-        // Ambil semua rating unik dari tabel kos
+        // Mengambil nilai rating unik dari data kos untuk keperluan filter di tampilan
         $ratings = Kos::selectRaw('FLOOR(nilai_rating) as rating')
             ->whereNotNull('nilai_rating')
             ->groupBy('rating')
             ->orderByDesc('rating')
             ->pluck('rating');
 
-        // Cek apakah user memilih metode rekomendasi
+        // Jika user memilih metode rekomendasi, maka sistem jalankan proses rekomendasi
         if ($request->metode === 'rekomendasi') {
-        $kos_list = $this->prosesRekomendasi($request);
-        return view('pencarian', [
-            'kos_list' => $kos_list,
-            'fasilitas' => $fasilitas,
-            'ratings' => $ratings,
-        ]);
-    }
-     // Jika pakai metode filter manual
+            $kos_list = $this->prosesRekomendasi($request);
+            return view('pencarian', [
+                'kos_list' => $kos_list,
+                'fasilitas' => $kategoriFasilitas,
+                'ratings' => $ratings,
+            ]);
+        }
+
+        // Jika tidak menggunakan rekomendasi, sistem jalankan pencarian manual dengan filter
+
+        // Koordinat referensi pusat pencarian ( kampus Poliwangi)
         $latitudeRef = -8.295807953836674;
         $longitudeRef = 114.30768351352297;
 
-        // Query dengan kalkulasi jarak menggunakan haversine formula
+        // Query pencarian kos dengan perhitungan jarak menggunakan Haversine Formula
         $kos = Kos::selectRaw("kos.*, (
                 6371 * acos(
                     cos(radians(?)) *
@@ -49,7 +54,9 @@ class PencarianController extends Controller
             ) AS jarak", [$latitudeRef, $longitudeRef, $latitudeRef])
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->with(['fasilitas', 'gambarKos']) // eager load relasi
+            ->with(['fasilitas', 'gambarKos']) // Memuat relasi fasilitas dan gambar kos
+
+            // Filter berdasarkan harga
             ->when($request->harga, function ($query) use ($request) {
                 if ($request->harga === '< Rp. 500.000') {
                     $query->where('harga', '<', 500000);
@@ -59,9 +66,13 @@ class PencarianController extends Controller
                     $query->where('harga', '>', 1000000);
                 }
             })
+
+            // Filter berdasarkan rating minimal
             ->when($request->rating, function ($query) use ($request) {
                 $query->where('nilai_rating', '>=', $request->rating);
             })
+
+            // Filter berdasarkan jarak
             ->when($request->jarak, function ($query) use ($request) {
                 if ($request->jarak === '< 1 km') {
                     $query->havingRaw('jarak < ?', [1]);
@@ -71,52 +82,54 @@ class PencarianController extends Controller
                     $query->havingRaw('jarak > ?', [3]);
                 }
             })
+
+            // Filter berdasarkan fasilitas
             ->when($request->has('fasilitas') && is_array($request->fasilitas), function ($query) use ($request) {
                 $query->whereHas('fasilitas', function ($subQuery) use ($request) {
                     $subQuery->whereIn('fasilitas.id', $request->fasilitas);
                 });
             })
 
-            ->orderBy('jarak') // urutkan berdasarkan jarak terdekat
-            ->paginate(9)
-            ->appends($request->all());
+            ->orderBy('jarak') // Urutkan hasil berdasarkan jarak terdekat
+            ->paginate(9)     // Tampilkan 9 hasil per halaman
+            ->appends($request->all()); // Menyertakan query string pada pagination
 
         return view('pencarian', [
             'kos_list' => $kos,
-            'fasilitas' => $fasilitas,
+            'fasilitas' => $kategoriFasilitas,
             'ratings' => $ratings,
         ]);
     }
 
-     private function prosesRekomendasi(Request $request)
+    // Fungsi untuk memproses rekomendasi berbasis cosine similarity
+    private function prosesRekomendasi(Request $request)
     {
-        $user = auth()->user();
-        $userVector = $this->buildUserVector($request);
+        $user = auth()->user(); // Ambil data user yang sedang login
 
-        $weightHarga = 0.3;
-        $weightJarak = 0.3;
-        $weightRating = 0.4;
-        $weightFasilitas = 0.1;
-        $weightSurvey = 0.4;
+        $userVector = $this->buildUserVector($request); // Bangun vektor preferensi pengguna
 
-        $dataNormalisasi = NormalisasiKos::with('kos.gambarKos')->get();
+        $dataNormalisasi = NormalisasiKos::with('kos.gambarKos')->get(); // Ambil data kos yang telah dinormalisasi
         $rekomendasi = [];
 
+        // Lakukan iterasi pada setiap data kos
         foreach ($dataNormalisasi as $data) {
-        $skorSurvey = SurveyKepuasan::where('id_kos', $data->id_kos)->avg('skor') ?? 3;
-        $skorSurveyNormalized = $skorSurvey / 5;
-        $kosVector = array_merge([
-            $data->harga_normalized * $weightHarga,
-            $data->jarak_normalized * $weightJarak,
-            $data->rating_normalized * $weightRating,
-        ], array_map(function ($fasilitasValue) use ($weightFasilitas) {
-            return $fasilitasValue * $weightFasilitas;
-        }, $data->fasilitas_normalized));
+            // Ambil rata-rata skor survey dari pengguna lain terhadap kos ini
+            $skorSurvey = SurveyKepuasan::where('id_kos', $data->id_kos)->avg('skor') ?? 3;
+            $skorSurveyNormalized = $skorSurvey / 5;
 
-        $kosVector[] = $skorSurveyNormalized * $weightSurvey;
+            $fasilitasKos = $data->fasilitas_normalized ?? [];
 
-        $similarity = $this->cosineSimilarity($userVector, $kosVector);
+            // Gabungkan seluruh atribut ke dalam satu vektor kos
+            $kosVector = array_merge([
+                $data->harga_normalized,
+                $data->jarak_normalized,
+                $data->rating_normalized,
+        ], $fasilitasKos, [$skorSurveyNormalized]);
 
+            // Hitung nilai similarity antara user dan kos
+            $similarity = $this->cosineSimilarity($userVector, $kosVector);
+
+            // Simpan hasil similarity ke tabel hasil_rekomendasi
             HasilRekomendasi::updateOrCreate([
                 'id_user' => $user->id,
                 'id_kos' => $data->id_kos,
@@ -124,21 +137,25 @@ class PencarianController extends Controller
                 'nilai_similarity' => $similarity
             ]);
 
+            // Tambahkan atribut similarity dan jarak ke data kos
             $data->kos->similarity = $similarity;
             $data->kos->jarak = $this->hitungJarak($data->kos->latitude, $data->kos->longitude);
+
+            // Masukkan ke array rekomendasi
             $rekomendasi[] = $data->kos;
         }
 
-        $topN = 8;
+        $topN = 8; // Ambil 8 data kos dengan similarity tertinggi
 
         return $this->paginateCollection(
             collect($rekomendasi)
                 ->sortByDesc('similarity')
-                ->take($topN) // ambil 8 besar dulu
+                ->take($topN)
                 ->values()
         );
     }
 
+    // Fungsi untuk melakukan paginasi manual pada koleksi
     private function paginateCollection(Collection $items, $perPage = 9)
     {
         $page = request()->get('page', 1);
@@ -152,82 +169,94 @@ class PencarianController extends Controller
             ['path' => request()->url(), 'query' => request()->query()]
         );
     }
+
+    // Fungsi perhitungan cosine similarity antara 2 vektor (user dan kos)
     private function cosineSimilarity(array $vectorA, array $vectorB)
-    {
-        $dotProduct = 0;
-        $magnitudeA = 0;
-        $magnitudeB = 0;
+{
+    $length = min(count($vectorA), count($vectorB)); // pastikan loop hanya sepanjang vektor terpendek
 
-        for ($i = 0; $i < count($vectorA); $i++) {
-            $dotProduct += $vectorA[$i] * $vectorB[$i];
-            $magnitudeA += pow($vectorA[$i], 2);
-            $magnitudeB += pow($vectorB[$i], 2);
-        }
+    $dotProduct = 0;
+    $magnitudeA = 0;
+    $magnitudeB = 0;
 
-        if ($magnitudeA == 0 || $magnitudeB == 0) {
-            return 0; // Hindari pembagian dengan nol
-        }
-
-        return $dotProduct / (sqrt($magnitudeA) * sqrt($magnitudeB));
+    for ($i = 0; $i < $length; $i++) {
+        $dotProduct += $vectorA[$i] * $vectorB[$i];
+        $magnitudeA += pow($vectorA[$i], 2);
+        $magnitudeB += pow($vectorB[$i], 2);
     }
 
+    if ($magnitudeA == 0 || $magnitudeB == 0) {
+        return 0;
+    }
+
+    return $dotProduct / (sqrt($magnitudeA) * sqrt($magnitudeB));
+}
+
+
+    // Fungsi untuk membentuk vektor preferensi pengguna dari input form pencarian
     private function buildUserVector(Request $request)
     {
-        // Bobot masing-masing fitur
-        $weightHarga = 0.3;
-        $weightJarak = 0.3;
-        $weightRating = 0.4;
-        $weightFasilitas = 0.1;// nanti dikalikan per elemen
-        $weightSurvey = 0.4; 
-
+        // Normalisasi harga berdasarkan pilihan pengguna
         $harga = match($request->harga) {
             '< Rp. 500.000' => 0,
             'Rp. 500.000 - Rp. 1.000.000' => 0.5,
             '> Rp. 1.000.000' => 1,
             default => 0.5
-        } * $weightHarga;
+        };
 
-        $rating = ($request->filled('rating') ? $request->rating / 5 : 0.5) * $weightRating;
+        // Normalisasi rating jika tersedia
+        $rating = ($request->filled('rating') ? $request->rating / 5 : 0.5);
 
+        // Normalisasi jarak berdasarkan input
         $jarak = match($request->jarak) {
             '< 1 km' => 0,
             '1 - 3 km' => 0.5,
             '> 3 km' => 1,
             default => 0.5
-        } * $weightJarak;
+        };
 
+        // Ambil semua fasilitas dan bangun vektor fasilitas berdasarkan input
         $allFasilitas = Fasilitas::orderBy('index')->get(['id', 'index']);
         $maxIndex = $allFasilitas->max('index');
         $userFasilitas = $request->filled('fasilitas') ? $request->fasilitas : [];
 
-        $fasilitasVector = $allFasilitas->map(function ($fasilitas) use ($userFasilitas, $maxIndex, $weightFasilitas) {
+        $fasilitasVector = $allFasilitas->map(function ($fasilitas) use ($userFasilitas, $maxIndex){
             return in_array($fasilitas->id, $userFasilitas)
-                ? ($fasilitas->index / $maxIndex) * $weightFasilitas
+                ? ($fasilitas->index / $maxIndex)
                 : 0;
         })->toArray();
-        
-        $survey = ($request->filled('survey') ? $request->survey / 5 : 0.5) * $weightSurvey;
-        
+
+        // Normalisasi skor survey pengguna
+        $survey = ($request->filled('survey') ? $request->survey / 5 : 0.5);
+
+        // Pastikan panjang vektor fasilitas tetap 10
+        if (count($fasilitasVector) < 10) {
+            $fasilitasVector = array_merge($fasilitasVector, array_fill(0, 10 - count($fasilitasVector), 0));
+        }
+
+        // Gabungkan semua atribut ke dalam satu vektor pengguna
         $userVector = array_merge([$harga, $jarak, $rating], $fasilitasVector, [$survey]);
 
         return $userVector;
     }
 
+    // Fungsi untuk menghitung jarak antara dua titik koordinat (Haversine Formula)
     private function hitungJarak($lat2, $lon2)
     {
-        $lat1 = -8.295814841001143; //koordinate preferensi
+        $lat1 = -8.295814841001143; // Koordinat pusat (Poliwangi)
         $lon1 = 114.3076786627924;
 
-        $earthRadius = 6371; // Radius bumi dalam km
+        $earthRadius = 6371; // Radius bumi dalam kilometer
 
-        $dLat = deg2rad($lat2 - $lat1);
+        $dLat = deg2rad($lat2 - $lat1); //menghitung selisih lintang bujur dan diubah ke radian
         $dLon = deg2rad($lon2 - $lon1);
 
-        $a = sin($dLat / 2) * sin($dLat / 2) +
-            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+        // Rumus haversine
+        $a = sin($dLat / 2) * sin($dLat / 2) + //mencari selisih antar dua titik
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * //mempertimbangkan kelengkungan bumi secara horizontal.
             sin($dLon / 2) * sin($dLon / 2);
 
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        return $earthRadius * $c;
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a)); //menghitung sudut tengah antar titik 
+        return $earthRadius * $c; //Nilai yang dikembalikan sebagai jarak antar dua titik berdasarkan lokasi pengguna dan kos.
     }
 }

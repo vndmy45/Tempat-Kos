@@ -3,20 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\Fasilitas;
+use App\Models\KategoriFasilitas;
 use Illuminate\Http\Request;
 
 class FasilitasController extends Controller
 {
     public function index()
     {
-    $dataFasilitas = Fasilitas::paginate(5); // atau jumlah item per halaman yang kamu mau
-    return view('admin.fasilitas.index', compact('dataFasilitas'));
+    $kategoriFasilitas = KategoriFasilitas::all();; // Ambil semua kategori fasilitas
+    $dataFasilitas = Fasilitas::with('kategori')->paginate(5); // atau jumlah item per halaman yang kamu mau
+    return view('admin.fasilitas.index', compact('dataFasilitas','kategoriFasilitas'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'nama_fasilitas' => 'required|string|max:255',
+            'id_kategori' => 'required|exists:kategori_fasilitas,id',
             'index' => 'required|integer',
         ]);
 

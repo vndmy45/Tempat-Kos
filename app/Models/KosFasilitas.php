@@ -12,7 +12,7 @@ class KosFasilitas extends Model
     protected $table = 'kos_fasilitas';
 
     protected $fillable = [
-        'id_kos', 'id_fasilitas', 'nilai_fasilitas',
+        'id_kos', 'id_fasilitas',
     ];
 }
 

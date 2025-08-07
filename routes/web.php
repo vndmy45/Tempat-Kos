@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\KategoriFasilitasController;
 use App\Http\Controllers\KosController;
 use App\Http\Controllers\PencarianController;
 use App\Http\Controllers\AuthController;
@@ -123,3 +124,6 @@ Route::middleware([
 Route::post('/survey', [SurveyKepuasanController::class, 'store'])->name('survey.store');
 
 Route::get('/pengujian/mae', [PengujianController::class, 'mae'])->name('pengujian.mae');
+
+Route::resource('kategori-fasilitas', KategoriFasilitasController::class)->middleware('auth');
+

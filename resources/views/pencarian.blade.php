@@ -23,11 +23,16 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Fasilitas</label>
-                            <select class="selectpicker w-100" name="fasilitas[]" multiple data-style="btn-outline-secondary">
-                                @foreach($fasilitas as $item)
-                                    <option value="{{ $item->id }}" {{ collect(request('fasilitas'))->contains($item->id) ? 'selected' : '' }}>
-                                        {{ $item->nama_fasilitas }}
-                                    </option>
+                            <select name="fasilitas[]" multiple class="selectpicker w-100" data-style="btn-outline-secondary">
+                                @foreach($fasilitas as $kategori)
+                                    <optgroup label="{{ $kategori->nama_kategori }}">
+                                        @foreach($kategori->fasilitas as $item)
+                                            <option value="{{ $item->id }}"
+                                                {{ in_array($item->id, (array) request('fasilitas')) ? 'selected' : '' }}>
+                                                {{ $item->nama_fasilitas }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
                                 @endforeach
                             </select>
                         </div>

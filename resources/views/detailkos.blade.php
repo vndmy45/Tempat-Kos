@@ -52,9 +52,17 @@
 
             <div class="mb-3">
                 <strong>Fasilitas Kos:</strong>
-                <ul class="mb-0">
-                    @foreach($kos->fasilitas as $fasilitas)
-                        <li>{{ $fasilitas->nama_fasilitas }}</li>
+                    @foreach($kategoriFasilitas as $kategori)
+                        @if($kategori->fasilitas->isNotEmpty())
+                            <div class="mb-2">
+                                <strong>{{ $kategori->nama_kategori }}</strong>
+                                <ul>
+                                    @foreach($kategori->fasilitas as $fasilitas)
+                                        <li>{{ $fasilitas->nama_fasilitas }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                     @endforeach
                 </ul>
             </div>

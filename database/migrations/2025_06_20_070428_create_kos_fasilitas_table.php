@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('id_kos')->constrained('kos')->onDelete('cascade');
             $table->foreignId('id_fasilitas')->constrained('fasilitas')->onDelete('cascade');
-            $table->integer('nilai_fasilitas'); //hapus dan pindah ke tabel normalisasi
             $table->timestamps();
         });
 
