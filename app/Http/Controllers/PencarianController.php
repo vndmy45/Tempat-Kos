@@ -114,16 +114,17 @@ class PencarianController extends Controller
         // Lakukan iterasi pada setiap data kos
         foreach ($dataNormalisasi as $data) {
             // Ambil rata-rata skor survey dari pengguna lain terhadap kos ini
-            $skorSurvey = SurveyKepuasan::where('id_kos', $data->id_kos)->avg('skor') ?? 3;
+            $skorSurvey = SurveyKepuasan::where('id_kos', $data->id_kos)->avg('skor') ?? 2.5;
             $skorSurveyNormalized = $skorSurvey / 5;
 
             $fasilitasKos = $data->fasilitas_normalized ?? [];
 
             // Gabungkan seluruh atribut ke dalam satu vektor kos
+            // Urutan: [harga, rating, jarak, fasilitas..., survey]
             $kosVector = array_merge([
                 $data->harga_normalized,
-                $data->jarak_normalized,
                 $data->rating_normalized,
+                $data->jarak_normalized,
         ], $fasilitasKos, [$skorSurveyNormalized]);
 
             // Hitung nilai similarity antara user dan kos
@@ -137,7 +138,7 @@ class PencarianController extends Controller
                 'nilai_similarity' => $similarity
             ]);
 
-            // Tambahkan atribut similarity dan jarak ke data kos
+            // Gunakan nilai similarity yang dihitung real-time untuk tampilan yang akurat
             $data->kos->similarity = $similarity;
             $data->kos->jarak = $this->hitungJarak($data->kos->latitude, $data->kos->longitude);
 
@@ -170,72 +171,68 @@ class PencarianController extends Controller
         );
     }
 
-    // Fungsi perhitungan cosine similarity antara 2 vektor (user dan kos)
+    // Fungsi perhitungan cosine similarity antara 2 vektor (user dan kos) dengan precision tinggi
     private function cosineSimilarity(array $vectorA, array $vectorB)
 {
     $length = min(count($vectorA), count($vectorB)); // pastikan loop hanya sepanjang vektor terpendek
 
-    $dotProduct = 0;
-    $magnitudeA = 0;
-    $magnitudeB = 0;
+    $dotProduct = 0.0;
+    $magnitudeA = 0.0;
+    $magnitudeB = 0.0;
 
     for ($i = 0; $i < $length; $i++) {
-        $dotProduct += $vectorA[$i] * $vectorB[$i];
-        $magnitudeA += pow($vectorA[$i], 2);
-        $magnitudeB += pow($vectorB[$i], 2);
+        $dotProduct += (float)$vectorA[$i] * (float)$vectorB[$i];
+        $magnitudeA += pow((float)$vectorA[$i], 2);
+        $magnitudeB += pow((float)$vectorB[$i], 2);
     }
 
     if ($magnitudeA == 0 || $magnitudeB == 0) {
-        return 0;
+        return 0.0;
     }
 
-    return $dotProduct / (sqrt($magnitudeA) * sqrt($magnitudeB));
+    return (float)($dotProduct / (sqrt($magnitudeA) * sqrt($magnitudeB)));
 }
 
 
-    // Fungsi untuk membentuk vektor preferensi pengguna dari input form pencarian
+    // Fungsi untuk membentuk vektor preferensi pengguna dari input form pencarian dengan precision tinggi
     private function buildUserVector(Request $request)
     {
-        // Normalisasi harga berdasarkan pilihan pengguna
+        // Normalisasi harga berdasarkan pilihan pengguna dengan precision tinggi
+        // Semakin kecil harga, semakin besar nilai (1 = terbaik)
         $harga = match($request->harga) {
-            '< Rp. 500.000' => 0,
-            'Rp. 500.000 - Rp. 1.000.000' => 0.5,
-            '> Rp. 1.000.000' => 1,
+            '< Rp. 500.000' => 1.0,    // Harga < 500k = 1 (terbaik)
+            'Rp. 500.000 - Rp. 1.000.000' => 0.5,  // Harga 500k-1M = 0.5 (sedang)
+            '> Rp. 1.000.000' => 0.0,  // Harga > 1M = 0 (terburuk)
             default => 0.5
         };
 
-        // Normalisasi rating jika tersedia
-        $rating = ($request->filled('rating') ? $request->rating / 5 : 0.5);
+        // Normalisasi rating jika tersedia dengan precision tinggi
+        $rating = ($request->filled('rating') ? (float)$request->rating / 5.0 : 0.5);
 
-        // Normalisasi jarak berdasarkan input
+        // Normalisasi jarak berdasarkan input dengan precision tinggi
+        // Semakin kecil jarak, semakin besar nilai (1 = terbaik)
         $jarak = match($request->jarak) {
-            '< 1 km' => 0,
-            '1 - 3 km' => 0.5,
-            '> 3 km' => 1,
+            '< 1 km' => 1.0,      // Jarak < 1 km = 1 (terbaik)
+            '1 - 3 km' => 0.5,  // Jarak 1-3 km = 0.5 (sedang)
+            '> 3 km' => 0.0,      // Jarak > 3 km = 0 (terburuk)
             default => 0.5
         };
 
-        // Ambil semua fasilitas dan bangun vektor fasilitas berdasarkan input
-        $allFasilitas = Fasilitas::orderBy('index')->get(['id', 'index']);
-        $maxIndex = $allFasilitas->max('index');
+        // Ambil semua fasilitas dan bangun vektor fasilitas berdasarkan input dengan precision tinggi
+        // Gunakan ID untuk konsistensi dengan database
+        $allFasilitas = Fasilitas::orderBy('id')->get(['id']);
         $userFasilitas = $request->filled('fasilitas') ? $request->fasilitas : [];
 
-        $fasilitasVector = $allFasilitas->map(function ($fasilitas) use ($userFasilitas, $maxIndex){
-            return in_array($fasilitas->id, $userFasilitas)
-                ? ($fasilitas->index / $maxIndex)
-                : 0;
+        $fasilitasVector = $allFasilitas->map(function ($fasilitas) use ($userFasilitas) {
+            return in_array($fasilitas->id, $userFasilitas) ? 1.0 : 0.0;
         })->toArray();
 
-        // Normalisasi skor survey pengguna
-        $survey = ($request->filled('survey') ? $request->survey / 5 : 0.5);
+        // Normalisasi skor survey pengguna dengan precision tinggi
+        $survey = ($request->filled('survey') ? (float)$request->survey / 5.0 : 0.5);
 
-        // Pastikan panjang vektor fasilitas tetap 10
-        if (count($fasilitasVector) < 10) {
-            $fasilitasVector = array_merge($fasilitasVector, array_fill(0, 10 - count($fasilitasVector), 0));
-        }
-
-        // Gabungkan semua atribut ke dalam satu vektor pengguna
-        $userVector = array_merge([$harga, $jarak, $rating], $fasilitasVector, [$survey]);
+        // Gabungkan semua atribut ke dalam satu vektor pengguna dengan precision tinggi
+        // Urutan: [harga, rating, jarak, fasilitas..., survey]
+        $userVector = array_merge([$harga, $rating, $jarak], $fasilitasVector, [$survey]);
 
         return $userVector;
     }

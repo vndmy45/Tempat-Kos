@@ -236,38 +236,35 @@ return view('detailkos', compact('kos', 'kategoriFasilitas'));
 
     // Fungsi untuk menyimpan nilai normalisasi dari kos
     private function simpanNormalisasi(Kos $kos)
-    {
-    // Normalisasi harga (0: murah, 0.5: sedang, 1: mahal)
-    $harga = $kos->harga < 500000 ? 0 : ($kos->harga > 1000000 ? 1 : 0.5);
+{
+    // Normalisasi harga (1 terbaik, 0 terburuk)
+    $harga = $kos->harga < 500000 ? 1 : ($kos->harga > 1000000 ? 0 : 0.5);
 
     // Normalisasi rating (dibagi 5)
     $rating = $kos->nilai_rating ? $kos->nilai_rating / 5 : 0.5;
 
-    // Normalisasi jarak
+    // Normalisasi jarak (1 terbaik, 0 terburuk)
     $jarak = $this->hitungJarak($kos->latitude, $kos->longitude);
-    $jarakNormalized = $jarak < 1 ? 0 : ($jarak > 3 ? 1 : 0.5);
+    $jarakNormalized = $jarak < 1 ? 1 : ($jarak > 3 ? 0 : 0.5);
 
-    // Ambil semua fasilitas yang tersedia di DB (dengan index)
-    $allFasilitas = Fasilitas::orderBy('index')->get(['id', 'index']);
+    // Ambil semua fasilitas dengan urutan ID (sama dengan buildUserVector)
+    $allFasilitas = Fasilitas::orderBy('id')->get(['id']);
     $kosFasilitas = $kos->fasilitas->pluck('id')->toArray();
 
-    // Normalisasi fasilitas: 1 jika kos punya fasilitas tsb, 0 jika tidak
     $fasilitasVector = $allFasilitas->map(function ($fasilitas) use ($kosFasilitas) {
-    return in_array($fasilitas->id, $kosFasilitas) ? 1 : 0;
+        return in_array($fasilitas->id, $kosFasilitas) ? 1 : 0;
     })->toArray();
 
-    // Simpan hasil ke tabel normalisasi_kos
     NormalisasiKos::updateOrCreate(
-    ['id_kos' => $kos->id],
-    [
-        'harga_normalized' => $harga,
-        'rating_normalized' => $rating,
-        'jarak_normalized' => $jarakNormalized,
-        'fasilitas_normalized' => $fasilitasVector, // hasil array dengan panjang = jumlah fasilitas
-    ]
+        ['id_kos' => $kos->id],
+        [
+            'harga_normalized' => $harga,
+            'rating_normalized' => $rating,
+            'jarak_normalized' => $jarakNormalized,
+            'fasilitas_normalized' => $fasilitasVector,
+        ]
     );
-    }
-
+}
 
     // Fungsi menghitung jarak antara titik preferensi dengan kos
     private function hitungJarak($lat2, $lon2)

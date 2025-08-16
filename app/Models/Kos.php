@@ -35,6 +35,11 @@ class Kos extends Model
     {
         return $this->belongsToMany(Fasilitas::class, 'kos_fasilitas', 'id_kos', 'id_fasilitas');
     }
+
+    public function normalisasiKos()
+    {
+        return $this->hasOne(NormalisasiKos::class, 'id_kos');
+    }
 }
 
 
